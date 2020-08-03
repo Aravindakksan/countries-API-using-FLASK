@@ -3,8 +3,97 @@ import urllib.request as request
 import simplejson 
 import json
 import pymysql
+import pyodbc
+#from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+#CORS(app)
+countries=[]
+# Connect to the database
+server = 'tcp:country.database.windows.net' 
+database = 'rest country api' 
+username = 'aravind' 
+password = 'Akksan766764#'
+connection = pyodbc.connect('DRIVER={ODBC Driver 13 for SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
+cursor = connection.cursor()
+cursor.execute("SELECT * FROM country")
+rows = cursor.fetchall()
+rows=list(rows)
+
+
+key=('name','code','capital','region','subregion','population','area','lat','lon','timezone','currency','flag')
+for i in range(len(rows)):
+    country={}
+    for j in range(len(rows[i])):
+        t=key[j]
+        country[t]=rows[i][j]
+    countries.append(country)
+
+
+@app.route("/name")
+def country_name():
+    c_name=[]
+    with request.urlopen('https://restcountries.eu/rest/v2') as response:
+        if response.getcode() == 200:
+            source = response.read()
+            data = json.loads(source)
+        else:
+            print('An error occurred while attempting to retrieve data from the API.')
+        for i in data:
+            dic={}
+            dic['name']=i['name']
+            dic['flag']=i['flag']
+            c_name.append(dic)
+    return jsonify(c_name)
+            
+@app.route("/capital")
+def country_capital():
+    c_capital=[]
+    with request.urlopen('https://restcountries.eu/rest/v2') as response:
+        if response.getcode() == 200:
+            source = response.read()
+            data = json.loads(source)
+        else:
+            print('An error occurred while attempting to retrieve data from the API.')
+        for i in data:
+            dic={}
+            dic['capital']=i['capital']
+            dic['flag']=i['flag']
+            dic['name']=i['name']
+            c_capital.append(dic)
+    return jsonify(c_capital)
+@app.route("/code")
+def country_code():
+    c_code=[]
+    with request.urlopen('https://restcountries.eu/rest/v2') as response:
+        if response.getcode() == 200:
+            source = response.read()
+            data = json.loads(source)
+        else:
+            print('An error occurred while attempting to retrieve data from the API.')
+        for i in data:
+            dic={}
+            dic['code']=str(i['callingCodes'][0])
+            dic['flag']=i['flag']
+            dic['name']=i['name']
+            c_code.append(dic)
+    return jsonify(c_code)
+@app.route("/continent")
+def country_continent():
+    c_continent=[]
+    with request.urlopen('https://restcountries.eu/rest/v2') as response:
+        if response.getcode() == 200:
+            source = response.read()
+            data = json.loads(source)
+        else:
+            print('An error occurred while attempting to retrieve data from the API.')
+        for i in data:
+            dic={}
+            dic['region']=i['region']
+            dic['flag']=i['flag']
+            dic['name']=i['name']
+            c_continent.append(dic)
+    return jsonify(c_continent)
 
 @app.route("/")
 def home():
@@ -47,22 +136,13 @@ def home():
             currency.append(data[i]['currencies'][0]['name'])
             flag.append(data[i]['flag'])
 
-    # Connect to the database
-    connection = pymysql.connect(host='sql12.freemysqlhosting.net',
-                             user='sql12356306',
-                             password='4lpG4FD3Za',
-                             db='sql12356306')
-    cursor = connection.cursor()
+    
     # Create a new record
-    for i in range(0,len(name)):
-        sql = "INSERT INTO `country` (`name`, `code`, `capital`, `region`, `subregion`, `population`, `area`, `lat`, `lon`, `timezone`, `currency`, `flag`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-        cursor.execute(sql, (name[i],ccode[i],capital[i],region[i],subregion[i],population[i],area[i],latlong[i][0],latlong[i][1],timezone[i],currency[i],flag[i]))
-        connection.commit()
+    if(len(rows)<250):
+        for i in range(0,len(name)):
+            cursor.execute("INSERT INTO dbo.country(name,code,capital,region,subregion,population,area,lat,lon,timezone,currency,flag) values (?,?,?,?,?,?,?,?,?,?,?,?)", name[i],str(ccode[i]),capital[i],region[i],subregion[i],str(population[i]),str(area[i]),str(latlong[i][0]),str(latlong[i][1]),timezone[i],currency[i],flag[i])
+            connection.commit()
 
-    cursor.execute("SELECT * FROM country")
-    rows = cursor.fetchall()
-    return jsonify(str(rows))
-
-
-if __name__ == "__main__":
-    app.run(debug = True)
+    print(len(rows))
+    return jsonify(countries)
+    
